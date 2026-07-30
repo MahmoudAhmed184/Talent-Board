@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.vitest.tsbuildinfo",
+    /* Tests may reach for Node APIs (reading token files, fixtures). Keeping
+     * them in their own project means `src/` application code still cannot. */
+    "types": ["vite/client", "node", "vitest/globals"]
+  },
+  /* Reset the parent's exclude, which exists to hand these files to us. */
+  "exclude": [],
+  "include": ["src/**/__tests__/**/*", "src/**/*.spec.ts", "src/test/**/*"]
+}

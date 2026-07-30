@@ -1,8 +1,25 @@
 {
   "extends": "@vue/tsconfig/tsconfig.dom.json",
+  /* `sfc-typed-router` narrows `useRoute()` to the routes a given page file can
+   * actually be rendered at, which is what lets the codebase follow the
+   * project rule of calling `useRoute()` with no route-path argument.
+   * `sfc-route-blocks` typechecks the `<route>` blocks in the page files. */
+  "vueCompilerOptions": {
+    "plugins": ["vue-router/volar/sfc-typed-router", "vue-router/volar/sfc-route-blocks"]
+  },
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "types": ["vite/client"],
+
+    /* The typed-router Volar plugin resolves page files relative to rootDir to
+     * match the keys in src/typed-router.d.ts. Harmless under `noEmit`. */
+    "rootDir": ".",
+
+    /* Mirrors resolve.alias in vite.config.ts. No `baseUrl`: it is deprecated
+     * in TypeScript 6, and `paths` resolves relative to this file without it. */
+    "paths": {
+      "@/*": ["./src/*"]
+    },
 
     /* Linting */
     "noUnusedLocals": true,
@@ -10,5 +27,8 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue", "src/**/*.d.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue", "src/**/*.d.ts"],
+  /* Tests are typechecked by tsconfig.vitest.json, which additionally exposes
+   * Node types. Application code deliberately does not get them. */
+  "exclude": ["src/**/__tests__/**/*", "src/**/*.spec.ts", "src/test/**/*"]
 }

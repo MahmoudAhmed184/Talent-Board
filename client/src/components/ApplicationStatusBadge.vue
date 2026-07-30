@@ -1,43 +1,24 @@
 <script setup lang="ts">
+/**
+ * Application status badge.
+ *
+ * Delegates to the centralised descriptor map so the label, tone, and icon for
+ * a given status are defined exactly once — see `src/lib/status.ts`. Unknown
+ * values coming from a newer API degrade to a neutral "Unknown" badge rather
+ * than rendering a raw enum string.
+ */
 import { computed } from 'vue'
+import UiStatusBadge from './ui/UiStatusBadge.vue'
+import { applicationStatus } from '../lib/status'
 
-type ApplicationStatus = 'submitted' | 'under_review' | 'accepted' | 'rejected' | 'cancelled'
-
-const { status } = defineProps<{
-  status: ApplicationStatus
+const { size = 'md', status } = defineProps<{
+  size?: 'sm' | 'md'
+  status: string
 }>()
 
-const badgeLabel = computed(() => {
-  if (status === 'under_review') {
-    return 'Under review'
-  }
-
-  return status.charAt(0).toUpperCase() + status.slice(1)
-})
-
-const badgeClass = computed(() => {
-  switch (status) {
-    case 'accepted':
-      return 'bg-emerald-100 text-emerald-800 ring-emerald-600/20'
-    case 'rejected':
-      return 'bg-red-100 text-red-800 ring-red-600/20'
-    case 'cancelled':
-      return 'bg-slate-200 text-slate-700 ring-slate-500/20'
-    case 'under_review':
-      return 'bg-amber-100 text-amber-800 ring-amber-600/20'
-    default:
-      return 'bg-blue-100 text-blue-800 ring-blue-600/20'
-  }
-})
+const descriptor = computed(() => applicationStatus(status))
 </script>
 
 <template>
-  <span
-    role="status"
-    :aria-label="`Application status: ${badgeLabel}`"
-    class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset"
-    :class="badgeClass"
-  >
-    {{ badgeLabel }}
-  </span>
+  <UiStatusBadge :status="descriptor" :size="size" />
 </template>

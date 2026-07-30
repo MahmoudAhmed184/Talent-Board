@@ -75,14 +75,19 @@ export function useEmployerApplications() {
 
   const isEmpty = computed(() => !isLoading.value && list.value.length === 0)
 
-  async function loadList(page = 1): Promise<void> {
+  /**
+   * @param status Server-side status filter. The API accepts only `status` and
+   *   `per_page` — there is no job filter, so callers that group by job must do
+   *   so within the returned page.
+   */
+  async function loadList(page = 1, status?: string): Promise<void> {
     clearErrors()
     isLoading.value = true
 
     try {
       const response = await http.get<CollectionResponse<EmployerApplicationItem>>(
         '/api/v1/employer/applications',
-        { params: { page } },
+        { params: { page, status: status || undefined } },
       )
       list.value = response.data.data
       paginationLinks.value = response.data.links

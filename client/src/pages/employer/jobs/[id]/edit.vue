@@ -1,80 +1,97 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+/**
+ * Edit an owned job listing.
+ *
+ * The form is only rendered once the listing has loaded, so `initialValues`
+ * are never applied to an already-dirty form.
+ */
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import JobForm from '../../../../components/employer/JobForm.vue'
-import type { EmployerJobPayload } from '../../../../composables/useEmployerJobForm'
+import {
+  UiAlert,
+  UiBreadcrumbs,
+  UiButton,
+  UiErrorState,
+  UiPageHeader,
+  UiSkeleton,
+} from '@/components/ui'
+import JobForm from '@/features/employer/components/JobForm.vue'
 import {
   toEmployerJobFormData,
   useEmployerJobsStore,
-} from '../../../../stores/useEmployerJobsStore'
+} from '@/stores/useEmployerJobsStore'
+import type { EmployerJobPayload } from '@/composables/useEmployerJobForm'
+import { useToast } from '@/composables/useToast'
 
 const route = useRoute()
 const router = useRouter()
 const jobsStore = useEmployerJobsStore()
+const toast = useToast()
 
-const jobId = computed(() => {
-  const params = route.params as Record<string, string | string[] | undefined>
-  const rawId = params.id
-  return Array.isArray(rawId) ? rawId[0] : String(rawId ?? '')
-})
-const initialValues = computed(() =>
-  jobsStore.currentJob ? toEmployerJobFormData(jobsStore.currentJob) : {},
-)
+const loading = ref(true)
+const jobId = computed(() => String(route.params.id))
+const job = computed(() => jobsStore.currentJob)
+const initialValues = computed(() => (job.value ? toEmployerJobFormData(job.value) : {}))
 
-async function loadJob() {
-  if (jobId.value) {
+async function load() {
+  loading.value = true
+
+  try {
     await jobsStore.fetchJob(jobId.value)
+  } finally {
+    loading.value = false
   }
 }
 
 async function submitJob(payload: EmployerJobPayload): Promise<void> {
   await jobsStore.updateJob(jobId.value, payload)
-  await router.push('/employer/dashboard')
+
+  toast.success('Your changes have been saved.', { title: 'Listing updated' })
+  await router.push(`/employer/jobs/${jobId.value}`)
 }
 
-watch(jobId, async (newId, oldId) => {
-  if (newId && newId !== oldId) {
-    await loadJob()
-  }
-})
-
-onMounted(loadJob)
+onMounted(load)
 </script>
 
 <template>
-  <section class="grid gap-4">
-    <RouterLink
-      to="/employer/dashboard"
-      class="inline-flex w-fit items-center text-sm font-semibold text-cyan-700 hover:text-cyan-800"
-    >
-      Back to dashboard
-    </RouterLink>
-
-    <div v-if="jobsStore.isLoading" class="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-600">
-      Loading job listing...
-    </div>
-
-    <div
-      v-else-if="jobsStore.formError && !jobsStore.currentJob"
-      class="rounded-lg border border-red-200 bg-red-50 p-6"
-      role="alert"
-    >
-      <p class="text-sm text-red-700">{{ jobsStore.formError }}</p>
-      <button
-        type="button"
-        class="mt-3 inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-        @click="loadJob"
-      >
-        Retry
-      </button>
-    </div>
-
-    <JobForm
-      v-else
-      mode="edit"
-      submit-label="Save changes"
-      :initial-values="initialValues"
-      :submit-handler="submitJob"
+  <div class="grid gap-6">
+    <UiBreadcrumbs
+      :items="[
+        { label: 'Job listings', to: '/employer/jobs' },
+        { label: job?.title ?? 'Listing', to: `/employer/jobs/${jobId}` },
+        { label: 'Edit' },
+      ]"
     />
-  </section>
+
+    <div v-if="loading" class="grid gap-4" role="status" aria-busy="true">
+      <span class="sr-only">Loading listing</span>
+      <UiSkeleton class="h-24" rounded="card" />
+      <UiSkeleton class="h-96" rounded="card" />
+    </div>
+
+    <UiErrorState
+      v-else-if="!job"
+      title="This listing could not be loaded"
+      description="It may have been deleted, or it may not belong to your account."
+      @retry="load"
+    >
+      <UiButton to="/employer/jobs" variant="secondary">Back to listings</UiButton>
+    </UiErrorState>
+
+    <template v-else>
+      <UiPageHeader eyebrow="Edit listing" :title="job.title" />
+
+      <UiAlert v-if="jobsStore.formError" tone="danger" title="Your changes were not saved">
+        {{ jobsStore.formError }}
+      </UiAlert>
+
+      <JobForm
+        mode="edit"
+        :initial-values="initialValues"
+        :was-approved="job.approval_status === 'approved'"
+        :cancel-to="`/employer/jobs/${jobId}`"
+        :submit-handler="submitJob"
+      />
+    </template>
+  </div>
 </template>

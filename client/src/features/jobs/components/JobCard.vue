@@ -1,95 +1,108 @@
 <script setup lang="ts">
-import { Briefcase, MapPin, DollarSign, Send, ArrowRight } from 'lucide-vue-next'
-import { type PublicJobSummary } from '../../../composables/usePublicJobs'
-import {
-  sentenceCase,
-  formatSalaryRange,
-  descriptionSnippet,
-  formatPostedDate,
-} from '../utils/formatters'
-import { useAuthStore } from '../../auth/stores/useAuthStore'
-import { useCandidateApplicationsStore } from '../../candidate/stores/useCandidateApplicationsStore'
+/**
+ * The primary job listing card used across public discovery and candidate search.
+ *
+ * Accessibility notes that drive the markup:
+ *  - The card is an `<article>`, not a clickable `<div>`. The title holds the
+ *    only link, stretched over the whole card with a pseudo-element, so the
+ *    card has exactly one entry in the tab order and a meaningful accessible
+ *    name ("Senior Vue Engineer") rather than "link".
+ *  - The Apply control sits above that overlay (`relative z-10`) so it stays
+ *    separately reachable instead of being swallowed by the title link.
+ *  - The pastel surface is decorative and derived from the job id, so a listing
+ *    keeps its colour between renders. It never encodes status.
+ */
 import { computed } from 'vue'
+import { Check, Send } from 'lucide-vue-next'
+import { UiButton } from '@/components/ui'
+import { pastelForId } from '@/lib/tone'
+import type { PublicJobSummary } from '@/composables/usePublicJobs'
+import { descriptionSnippet, formatPostedDate } from '../utils/formatters'
+import CompanySummary from './CompanySummary.vue'
+import JobMetadata from './JobMetadata.vue'
 
-const authStore = useAuthStore()
-const applicationStore = useCandidateApplicationsStore()
-
-const isApplied = computed(() => {
-  if (authStore.user?.role !== 'candidate') return false
-  return applicationStore.isJobApplied(job.id)
-})
-
-const { job, hideApply = false } = defineProps<{
+const {
+  applied = false,
+  applying = false,
+  job,
+  showApply = false,
+} = defineProps<{
+  applied?: boolean
+  applying?: boolean
   job: PublicJobSummary
-  hideApply?: boolean
+  /** Only candidates see the inline apply control. */
+  showApply?: boolean
 }>()
 
-const emit = defineEmits<{
-  (e: 'apply', job: PublicJobSummary): void
-}>()
+const emit = defineEmits<{ apply: [job: PublicJobSummary] }>()
+
+const surface = computed(() => pastelForId(job.id))
+const logoUrl = computed(() => job.employer?.logo?.path ?? null)
 </script>
 
 <template>
-  <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-6 group">
-    <div class="flex-1 min-w-0">
-      <div class="flex items-center gap-2 mb-2 text-xs font-semibold uppercase tracking-wider text-emerald-600">
-        <span>{{ job.employer?.company_name || 'Company' }}</span>
-        <span class="text-slate-300">&bull;</span>
-        <span>{{ job.category || 'General' }}</span>
-      </div>
-      
-      <h2 class="text-xl font-bold text-slate-900 truncate mb-2 group-hover:text-emerald-700 transition-colors">
-        <RouterLink :to="`/jobs/${job.id}`">
+  <article
+    class="group relative flex h-full flex-col gap-4 rounded-card border border-ink-950/10 p-5 transition-[transform,box-shadow] duration-[var(--duration-control)] ease-[var(--ease-standard)] hover:-translate-y-0.5 hover:shadow-card-hover focus-within:-translate-y-0.5 focus-within:shadow-card-hover motion-reduce:hover:translate-y-0 motion-reduce:focus-within:translate-y-0"
+    :class="surface"
+  >
+    <div class="flex items-start justify-between gap-3">
+      <CompanySummary :name="job.employer?.company_name" :logo-url="logoUrl" />
+      <p class="shrink-0 text-meta text-ink-800">{{ formatPostedDate(job.published_at) }}</p>
+    </div>
+
+    <div class="min-w-0 flex-1">
+      <h3 class="text-card-title text-ink-950">
+        <!--
+          `after:absolute after:inset-0` is what makes the whole card
+          activatable without turning it into a div with a click handler.
+        -->
+        <RouterLink
+          :to="`/jobs/${job.id}`"
+          class="rounded-control after:absolute after:inset-0 after:rounded-card group-hover:underline"
+        >
           {{ job.title }}
         </RouterLink>
-      </h2>
-      
-      <p class="text-sm text-slate-600 line-clamp-2 mb-4">
-        {{ descriptionSnippet(job.description) }}
+      </h3>
+
+      <p v-if="job.category" class="mt-1 text-meta font-medium text-ink-800">
+        {{ job.category }}
       </p>
-      
-      <div class="flex flex-wrap gap-2 text-xs font-medium text-slate-600">
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-50 border border-slate-100">
-          <MapPin class="w-3.5 h-3.5 text-slate-400" />
-          {{ job.location || 'Remote' }}
-        </span>
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-50 border border-slate-100">
-          <Briefcase class="w-3.5 h-3.5 text-slate-400" />
-          {{ sentenceCase(job.work_type) }}
-        </span>
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-50 border border-slate-100">
-          <DollarSign class="w-3.5 h-3.5 text-slate-400" />
-          {{ formatSalaryRange(job.salary_min, job.salary_max) }}
-        </span>
-      </div>
+
+      <p class="mt-2 line-clamp-2 text-support leading-6 text-ink-800">
+        {{ descriptionSnippet(job.description, 140) }}
+      </p>
     </div>
-    
-    <div class="flex flex-row lg:flex-col items-center lg:items-end justify-between shrink-0 gap-4">
-      <p class="text-xs text-slate-500 font-medium">{{ formatPostedDate(job.published_at) }}</p>
-      <div class="flex gap-2">
-        <RouterLink
-          v-if="!authStore.isAuthenticated || authStore.role !== 'candidate'"
-          :to="`/jobs/${job.id}`"
-          class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors shadow-sm gap-2"
-        >
-          View Details
-          <ArrowRight class="w-4 h-4" />
-        </RouterLink>
-        <button
-          v-else-if="!hideApply"
-          @click="emit('apply', job)"
-          :disabled="isApplied"
-          class="inline-flex items-center justify-center rounded-lg px-5 py-2 text-sm font-medium transition-colors shadow-sm gap-2"
-          :class="[
-            isApplied 
-              ? 'bg-slate-100 text-slate-500 border border-slate-200 cursor-not-allowed' 
-              : 'bg-emerald-600 text-white hover:bg-emerald-700'
-          ]"
-        >
-          {{ isApplied ? 'Applied' : 'Apply Now' }}
-          <Send v-if="!isApplied" class="w-4 h-4" />
-        </button>
-      </div>
+
+    <JobMetadata
+      compact
+      :location="job.location"
+      :work-type="job.work_type"
+      :experience-level="job.experience_level"
+      :salary-min="job.salary_min"
+      :salary-max="job.salary_max"
+    />
+
+    <div v-if="showApply" class="relative z-10 flex justify-end">
+      <UiButton
+        v-if="applied"
+        size="sm"
+        variant="secondary"
+        disabled
+        :aria-label="`Already applied to ${job.title}`"
+      >
+        <template #icon><Check class="size-4" aria-hidden="true" /></template>
+        Applied
+      </UiButton>
+      <UiButton
+        v-else
+        size="sm"
+        :loading="applying"
+        :aria-label="`Apply to ${job.title}`"
+        @click="emit('apply', job)"
+      >
+        <template #icon><Send class="size-4" aria-hidden="true" /></template>
+        Apply
+      </UiButton>
     </div>
-  </div>
+  </article>
 </template>

@@ -61,3 +61,9 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Local tooling output
+# `.claude/launch.json` is shared dev-server config and IS committed; the
+# settings file is per-machine permissions.
+/.claude/settings.local.json
+/.playwright-mcp/
