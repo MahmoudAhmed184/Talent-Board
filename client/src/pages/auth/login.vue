@@ -1,145 +1,104 @@
 <script setup lang="ts">
+/**
+ * Sign-in page — one form for all three roles.
+ *
+ * The API exposes a single `POST /api/v1/auth/login` and derives the role from
+ * the account, so there is deliberately no separate administrator sign-in
+ * screen: a second form would imply a second credential store that does not
+ * exist. Admins are provisioned by seeder and sign in here.
+ */
 import { reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { isApiValidationError } from '../../http'
-import { useAuth } from '../../features/auth/composables/useAuth'
-import type { LoginPayload, UserRole } from '../../features/auth/types'
-import { useFormErrors, type ApiErrorPayload } from '../../composables/useFormErrors'
+import { UiAlert, UiButton, UiInput } from '@/components/ui'
+import { isApiValidationError, type ValidationErrorMap } from '@/http'
+import { useAuth } from '@/features/auth/composables/useAuth'
+import { homeForRole } from '@/lib/navigation'
 
 const route = useRoute()
 const router = useRouter()
 const { login } = useAuth()
 
-const form = reactive<LoginPayload>({
-  email: '',
-  password: '',
-})
-const isSubmitting = ref(false)
-const { state, clearErrors, setFieldError, setFormError, mapApiErrors, getFieldError } =
-  useFormErrors<keyof LoginPayload>()
+const form = reactive({ email: '', password: '' })
+const fieldErrors = ref<ValidationErrorMap>({})
+const formError = ref('')
+const submitting = ref(false)
 
-function roleHome(role: UserRole) {
-  if (role === 'candidate') {
-    return '/'
-  }
-
-  if (role === 'employer') {
-    return '/employer/dashboard'
-  }
-
-  return role === 'admin' ? '/admin' : `/${role}`
-}
-
-function firstError(field: keyof LoginPayload) {
-  return getFieldError(field) ?? ''
-}
-
-function redirectTarget(role: UserRole) {
-  return typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/')
-    ? route.query.redirect
-    : roleHome(role)
+function fieldError(field: string): string {
+  return fieldErrors.value[field]?.[0] ?? ''
 }
 
 async function submit() {
-  clearErrors()
-
-  if (!form.email.trim()) {
-    setFieldError('email', 'Email is required.')
-  }
-  if (!form.password.trim()) {
-    setFieldError('password', 'Password is required.')
-  }
-  if (firstError('email') || firstError('password')) {
+  if (submitting.value) {
     return
   }
 
-  isSubmitting.value = true
+  formError.value = ''
+  fieldErrors.value = {}
+  submitting.value = true
 
   try {
-    const context = await login(form)
-    await router.push(redirectTarget(context.role))
+    const session = await login({ email: form.email.trim(), password: form.password })
+
+    const redirect =
+      typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/')
+        ? route.query.redirect
+        : homeForRole(session.role)
+
+    await router.push(redirect)
   } catch (error) {
     if (isApiValidationError(error)) {
-      mapApiErrors(error as ApiErrorPayload)
+      fieldErrors.value = error.errors
+      // Laravel returns the credential mismatch on the email field; surface it
+      // at form level too so it is not missed under a single input.
+      formError.value = error.errors.email?.[0] ?? 'Please correct the highlighted fields.'
     } else {
-      setFormError('Unable to sign in with those credentials.')
+      formError.value = 'We could not sign you in. Please check your connection and try again.'
     }
   } finally {
-    isSubmitting.value = false
+    submitting.value = false
   }
 }
 </script>
 
 <template>
-  <form class="grid gap-5" novalidate @submit.prevent="submit">
-    <div>
-      <p class="text-sm font-semibold uppercase tracking-wider text-emerald-700">
-        Sign in
-      </p>
-      <h2 class="mt-2 text-2xl font-semibold tracking-normal text-slate-950">
-        Welcome back
-      </h2>
-    </div>
-
-    <p
-      v-if="state.formError.value"
-      class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
-      role="alert"
-      aria-live="assertive"
-    >
-      {{ state.formError.value }}
+  <div>
+    <h1 class="text-page-title text-text-primary">Sign in</h1>
+    <p class="mt-2 text-support text-text-muted">
+      Use the account you registered with as a candidate or employer.
     </p>
 
-    <label class="grid gap-2">
-      <span class="text-sm font-medium text-slate-700">Email</span>
-      <input
+    <form class="mt-8 grid gap-5" novalidate @submit.prevent="submit">
+      <UiAlert v-if="formError" tone="danger" title="Sign-in failed">{{ formError }}</UiAlert>
+
+      <UiInput
         v-model="form.email"
+        label="Email address"
         type="email"
         autocomplete="email"
-        class="h-11 rounded-md border border-slate-300 px-3 text-sm text-slate-950 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
-        :class="{ 'border-red-400 focus:border-red-500 focus:ring-red-100': firstError('email') }"
-        :aria-invalid="Boolean(firstError('email'))"
-        :aria-describedby="firstError('email') ? 'login-email-error' : undefined"
-      >
-      <span v-if="firstError('email')" id="login-email-error" class="text-sm text-red-600" role="alert">
-        {{ firstError('email') }}
-      </span>
-    </label>
+        inputmode="email"
+        required
+        :error="fieldError('email')"
+      />
 
-    <label class="grid gap-2">
-      <span class="text-sm font-medium text-slate-700">Password</span>
-      <input
+      <UiInput
         v-model="form.password"
+        label="Password"
         type="password"
         autocomplete="current-password"
-        class="h-11 rounded-md border border-slate-300 px-3 text-sm text-slate-950 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
-        :class="{ 'border-red-400 focus:border-red-500 focus:ring-red-100': firstError('password') }"
-        :aria-invalid="Boolean(firstError('password'))"
-        :aria-describedby="firstError('password') ? 'login-password-error' : undefined"
-      >
-      <span
-        v-if="firstError('password')"
-        id="login-password-error"
-        class="text-sm text-red-600"
-        role="alert"
-      >
-        {{ firstError('password') }}
-      </span>
-    </label>
+        required
+        :error="fieldError('password')"
+      />
 
-    <button
-      type="submit"
-      class="inline-flex h-11 items-center justify-center rounded-md bg-emerald-700 px-4 text-sm font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-300"
-      :disabled="isSubmitting"
-    >
-      {{ isSubmitting ? 'Signing in...' : 'Sign in' }}
-    </button>
+      <UiButton type="submit" size="lg" block :loading="submitting" loading-label="Signing you in">
+        Sign in
+      </UiButton>
+    </form>
 
-    <p class="text-sm text-slate-600">
-      Need an account?
-      <RouterLink to="/auth/register" class="font-semibold text-emerald-700 hover:text-emerald-800">
+    <p class="mt-6 text-support text-text-muted">
+      Do not have an account?
+      <RouterLink to="/auth/register" class="font-semibold text-accent hover:underline">
         Create one
       </RouterLink>
     </p>
-  </form>
+  </div>
 </template>

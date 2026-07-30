@@ -1,171 +1,139 @@
 <script setup lang="ts">
+/**
+ * Public landing page.
+ *
+ * Leads straight into search — the fastest path to value on a job board is the
+ * search field, not a marketing narrative. The latest approved listings are
+ * shown immediately so the page proves it has real content.
+ *
+ * Every number on this page is a real count from the API — the hero's figures
+ * come from `GET /api/v1/stats`; none of them is invented.
+ */
 import { computed, onMounted } from 'vue'
-import { usePublicJobs } from '../composables/usePublicJobs'
-import { useAuthStore } from '../features/auth/stores/useAuthStore'
-import { Briefcase, MapPin, DollarSign, ArrowRight } from 'lucide-vue-next'
-import { sentenceCase, formatSalaryRange } from '../features/jobs/utils/formatters'
+import { useRouter } from 'vue-router'
+import { ArrowRight } from 'lucide-vue-next'
+import { motion } from 'motion-v'
+import { UiButton, UiErrorState, UiSkeleton } from '@/components/ui'
+import { fadeRise, useStaggeredPreset } from '@/design/motion'
+import { usePublicJobs } from '@/composables/usePublicJobs'
+import { useSearchStore } from '@/stores/useSearchStore'
+import { useAuthStore } from '@/features/auth/stores/useAuthStore'
+import { homeForRole } from '@/lib/navigation'
+import JobCard from '@/features/jobs/components/JobCard.vue'
+import LandingHero from '@/features/marketing/components/LandingHero.vue'
+import TalentArcSection from '@/features/marketing/components/TalentArcSection.vue'
+import TalentBentoSection from '@/features/marketing/components/TalentBentoSection.vue'
 
+const router = useRouter()
 const authStore = useAuthStore()
-const { jobs, formError, isListLoading, loadJobs } = usePublicJobs()
+const searchStore = useSearchStore()
+const { formError, isListLoading, jobs, loadJobs } = usePublicJobs()
 
-const featuredJobs = computed(() => jobs.value.slice(0, 4))
-const dashboardPath = computed(() => {
-  if (authStore.role === 'candidate') {
-    return '/candidate'
-  }
+const cardMotion = useStaggeredPreset(fadeRise)
 
-  if (authStore.role === 'employer') {
-    return '/employer/dashboard'
-  }
+const featuredJobs = computed(() => jobs.value.slice(0, 6))
 
-  if (authStore.role === 'admin') {
-    return '/admin'
-  }
-
-  return '/'
-})
-
-const jobsPath = computed(() => {
-  if (authStore.role === 'candidate') {
-    return '/candidate/jobs'
-  }
-  return '/jobs'
-})
-
-function companyLabel(job: { employer?: { company_name?: string | null } | null }) {
-  return job.employer?.company_name ?? 'Hiring company'
+function runSearch() {
+  void router.push({ path: '/jobs', query: searchStore.q ? { q: searchStore.q } : {} })
 }
 
-onMounted(async () => {
-  await loadJobs({ per_page: 4 })
+onMounted(() => {
+  void loadJobs({ per_page: 6 })
 })
 </script>
 
 <template>
-  <section class="max-w-7xl mx-auto px-4 md:px-8 grid gap-10 py-10 lg:grid-cols-[minmax(0,0.95fr)_minmax(28rem,1fr)] lg:items-start lg:py-14">
-    <div class="pt-2 lg:pt-10">
-      <div class="mb-6 flex w-fit items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-emerald-800">
-        Talent Board
-      </div>
-      <h1 class="max-w-3xl text-4xl font-bold leading-tight tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-        Find the right role without losing the hiring context.
-      </h1>
-      <p class="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-        Search approved openings, review the essentials quickly, and sign in only when
-        you need to manage candidate or employer workflows.
-      </p>
-      <div class="mt-8 flex flex-wrap items-center gap-4">
-        <RouterLink
-          :to="jobsPath"
-          class="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-6 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition-all active:scale-95"
-        >
-          Browse jobs
-          <ArrowRight class="w-4 h-4" />
-        </RouterLink>
-        <template v-if="authStore.isAuthenticated">
-          <RouterLink
-            :to="dashboardPath"
-            class="inline-flex h-12 items-center justify-center rounded-lg border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-300 transition-all active:scale-95"
-          >
-            Open dashboard
-          </RouterLink>
-        </template>
-        <template v-else-if="!authStore.isSessionLoading">
-          <RouterLink
-            to="/auth/register"
-            class="inline-flex h-12 items-center justify-center rounded-lg border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-300 transition-all active:scale-95"
-          >
-            Create account
-          </RouterLink>
-          <RouterLink
-            to="/auth/login"
-            class="inline-flex h-12 items-center justify-center rounded-lg border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-300 transition-all active:scale-95"
-          >
-            Sign in
-          </RouterLink>
-        </template>
-      </div>
+  <div>
+    <!-- Hero. A full-bleed band that the public header sits over, unpainted. -->
+    <LandingHero v-model="searchStore.q" @submit="runSearch" />
 
-      <dl class="mt-12 grid max-w-xl grid-cols-3 gap-4">
-        <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:border-emerald-200 transition-colors">
-          <dt class="text-xs font-semibold uppercase tracking-wider text-slate-500">Jobs</dt>
-          <dd class="mt-2 text-3xl font-bold text-slate-900">100+</dd>
+    <div class="mx-auto max-w-[var(--size-content-max)] px-4 py-12 sm:px-6 sm:py-16">
+      <!-- Latest listings -->
+      <section aria-labelledby="latest-jobs-heading">
+        <div class="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 id="latest-jobs-heading" class="text-section-title text-text-primary">
+              Latest approved roles
+            </h2>
+            <p class="mt-1 text-support text-text-muted">
+              Freshly published listings from across the board.
+            </p>
+          </div>
+
+          <UiButton to="/jobs" variant="secondary" size="sm">
+            Browse all jobs
+            <template #trailing><ArrowRight class="size-4" aria-hidden="true" /></template>
+          </UiButton>
         </div>
-        <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:border-emerald-200 transition-colors">
-          <dt class="text-xs font-semibold uppercase tracking-wider text-slate-500">Roles</dt>
-          <dd class="mt-2 text-3xl font-bold text-slate-900">4</dd>
+
+        <div
+          v-if="isListLoading"
+          class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          role="status"
+          aria-busy="true"
+        >
+          <span class="sr-only">Loading the latest job listings</span>
+          <UiSkeleton v-for="index in 6" :key="index" class="h-64" rounded="card" />
         </div>
-        <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:border-emerald-200 transition-colors">
-          <dt class="text-xs font-semibold uppercase tracking-wider text-slate-500">Mode</dt>
-          <dd class="mt-2 text-3xl font-bold text-slate-900">SPA</dd>
+
+        <div v-else-if="formError" class="mt-6">
+          <UiErrorState
+            title="Latest jobs could not be loaded"
+            :description="formError"
+            @retry="loadJobs({ per_page: 6 })"
+          />
         </div>
-      </dl>
+
+        <ul v-else class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <motion.li
+            v-for="(job, index) in featuredJobs"
+            :key="job.id"
+            v-bind="cardMotion(index)"
+          >
+            <JobCard :job="job" />
+          </motion.li>
+        </ul>
+      </section>
     </div>
 
-    <aside class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm" aria-labelledby="featured-jobs-title">
-      <div class="mb-6 flex items-center justify-between gap-3">
-        <div>
-          <h2 id="featured-jobs-title" class="text-xl font-bold text-slate-900">
-            Latest approved jobs
-          </h2>
-          <p class="mt-1 text-sm text-slate-500">A quick sample from the live job board.</p>
-        </div>
-        <RouterLink :to="jobsPath" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700">
-          View all
-        </RouterLink>
-      </div>
+    <!--
+      Value proposition. A full-bleed band, so it sits outside the content
+      column and its portrait arc can be cropped by the viewport edges. It also
+      carries the three points the old numbered "How applying works" list made,
+      which is why that list is gone.
+    -->
+    <TalentArcSection />
 
-      <div v-if="isListLoading" class="grid gap-4" role="status" aria-live="polite">
-        <div v-for="index in 4" :key="index" class="h-24 animate-pulse rounded-xl border border-slate-100 bg-slate-50" />
-      </div>
+    <div class="mx-auto max-w-[var(--size-content-max)] px-4 py-12 sm:px-6 sm:py-16">
+      <TalentBentoSection />
 
-      <div
-        v-else-if="formError"
-        class="rounded-md border border-dashed border-red-200 bg-red-50 px-4 py-8 text-center"
-        role="alert"
+      <!-- Sign-up prompt. Hidden once signed in, where it would be noise. -->
+      <section
+        v-if="!authStore.isAuthenticated && !authStore.isSessionLoading"
+        class="mt-16 rounded-panel border border-border bg-surface p-6 sm:p-10"
       >
-        <p class="text-sm font-semibold text-slate-900">Unable to load featured jobs</p>
-        <p class="mt-1 text-sm text-red-700">{{ formError }}</p>
-        <button
-          type="button"
-          class="mt-4 inline-flex h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-          @click="loadJobs({ per_page: 4 })"
-        >
-          Retry
-        </button>
-      </div>
+        <div class="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
+          <div class="max-w-2xl">
+            <h2 class="text-section-title text-text-primary">Ready to apply?</h2>
+            <p class="mt-2 text-support leading-6 text-text-muted">
+              Create a candidate account to apply and track responses, or an
+              employer account to post a role for review.
+            </p>
+          </div>
 
-      <ul v-else class="grid gap-3" aria-label="Featured job listings">
-        <li v-for="job in featuredJobs" :key="job.id">
-          <RouterLink
-            :to="`/jobs/${job.id}`"
-            class="block rounded-xl border border-slate-200 p-5 hover:border-emerald-300 hover:shadow-md transition-all group"
-          >
-            <div class="flex items-center gap-2 mb-2 text-xs font-semibold uppercase tracking-wider text-emerald-600">
-              <span>{{ companyLabel(job) }}</span>
-              <span class="text-slate-300">&bull;</span>
-              <span>{{ job.category || 'General' }}</span>
-            </div>
-            
-            <p class="text-lg font-bold text-slate-900 group-hover:text-emerald-700 transition-colors mb-3">{{ job.title }}</p>
-            
-            <div class="flex flex-wrap gap-2 text-xs font-medium text-slate-600">
-              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-50 border border-slate-100">
-                <MapPin class="w-3.5 h-3.5 text-slate-400" />
-                {{ job.location ?? 'Remote' }}
-              </span>
-              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-50 border border-slate-100">
-                <Briefcase class="w-3.5 h-3.5 text-slate-400" />
-                {{ sentenceCase(job.work_type) }}
-              </span>
-              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-50 border border-slate-100">
-                <DollarSign class="w-3.5 h-3.5 text-slate-400" />
-                {{ formatSalaryRange(job.salary_min, job.salary_max) }}
-              </span>
-            </div>
-          </RouterLink>
-        </li>
-      </ul>
-    </aside>
-  </section>
+          <div class="flex flex-wrap gap-3">
+            <UiButton to="/auth/register/candidate">I am looking for work</UiButton>
+            <UiButton to="/auth/register/employer" variant="secondary">I am hiring</UiButton>
+          </div>
+        </div>
+      </section>
+
+      <section v-else-if="authStore.isAuthenticated" class="mt-16">
+        <UiButton :to="homeForRole(authStore.role)" variant="secondary">
+          Go to my workspace
+          <template #trailing><ArrowRight class="size-4" aria-hidden="true" /></template>
+        </UiButton>
+      </section>
+    </div>
+  </div>
 </template>

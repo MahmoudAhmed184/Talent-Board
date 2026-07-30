@@ -1,101 +1,179 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
-import { useCandidateApplicationsStore } from '../../features/candidate/stores/useCandidateApplicationsStore'
-import { FileText, CheckCircle, XCircle, Clock, ArrowRight } from 'lucide-vue-next'
-import { format } from 'date-fns'
+/**
+ * Candidate dashboard.
+ *
+ * Answers "what happened to my applications?" first, then "what still needs
+ * doing on my profile?". The counters are derived from the loaded page of
+ * applications, and the card says so — an unqualified "3 accepted" that only
+ * counted the first page would be a lie.
+ */
+import { computed, onMounted } from 'vue'
+import { CheckCircle2, ClipboardList, Clock, Search, XCircle } from 'lucide-vue-next'
+import {
+  UiAlert,
+  UiButton,
+  UiCard,
+  UiEmptyState,
+  UiPageHeader,
+  UiSectionHeader,
+  UiSkeleton,
+  UiStatCard,
+} from '@/components/ui'
+import RealtimeStatusIndicator from '@/components/RealtimeStatusIndicator.vue'
+import ApplicationCard from '@/features/applications/components/ApplicationCard.vue'
+import { useApplicationStatusStream } from '@/features/applications/composables/useApplicationStatusStream'
+import ProfileCompletion from '@/features/candidate/components/ProfileCompletion.vue'
+import { useCandidateApplicationsStore } from '@/features/candidate/stores/useCandidateApplicationsStore'
+import { useCandidateProfileStore } from '@/features/candidate/stores/useCandidateProfileStore'
+import { useResumes } from '@/features/candidate/composables/useResumes'
+import { useAuthStore } from '@/features/auth/stores/useAuthStore'
 
+const authStore = useAuthStore()
 const applicationsStore = useCandidateApplicationsStore()
+const profileStore = useCandidateProfileStore()
+const { fetchResumes, resumes } = useResumes()
+
+const loadError = computed(() => null)
+
+const applications = computed(() => applicationsStore.applications ?? [])
+const recent = computed(() => applications.value.slice(0, 3))
+
+/** Counts describe the loaded page only; the label below says so. */
+const counts = computed(() => {
+  const list = applications.value
+
+  return {
+    total: applicationsStore.meta?.total ?? list.length,
+    inReview: list.filter((a) => ['submitted', 'under_review'].includes(a.status)).length,
+    accepted: list.filter((a) => a.status === 'accepted').length,
+    rejected: list.filter((a) => a.status === 'rejected').length,
+  }
+})
+
+const { reconnect, state: realtimeState } = useApplicationStatusStream(() => {
+  void applicationsStore.loadPage(applicationsStore.currentPage)
+})
+
+/**
+ * Manual fallback when live updates are unavailable: retry the socket *and*
+ * refetch, so the button fixes both the data and the connection.
+ */
+async function refresh() {
+  await Promise.allSettled([applicationsStore.loadPage(1), reconnect()])
+}
 
 onMounted(async () => {
-  await applicationsStore.loadPage(1)
+  await Promise.allSettled([
+    applicationsStore.loadPage(1),
+    profileStore.loadProfile(),
+    fetchResumes(),
+  ])
 })
-
-const applications = computed(() => applicationsStore.applications || [])
-const recentApplications = computed(() => applications.value.slice(0, 5))
-
-// Calculate stats based on fetched applications
-// In a real app, this might be an endpoint, but we use the fetched page/list for demo.
-const stats = computed(() => {
-  const total = applicationsStore.meta?.total || applications.value.length
-  
-  // Since we might only have page 1, true counts would need API support.
-  // For the UI, we'll calculate from the current items, or if we had real stats from API.
-  const pending = applications.value.filter(a => ['submitted', 'under_review'].includes(a.status)).length
-  const accepted = applications.value.filter(a => a.status === 'accepted').length
-  const rejected = applications.value.filter(a => a.status === 'rejected').length
-
-  return [
-    { name: 'Total Applications', value: total, icon: FileText, color: 'text-blue-600', bg: 'bg-blue-100' },
-    { name: 'Accepted', value: accepted, icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-100' },
-    { name: 'Rejected', value: rejected, icon: XCircle, color: 'text-red-600', bg: 'bg-red-100' },
-    { name: 'Pending Review', value: pending, icon: Clock, color: 'text-yellow-600', bg: 'bg-yellow-100' },
-  ]
-})
-
-function getStatusColor(status: string) {
-  switch (status) {
-    case 'accepted': return 'bg-emerald-100 text-emerald-800 border-emerald-200'
-    case 'rejected': return 'bg-red-100 text-red-800 border-red-200'
-    case 'submitted':
-    case 'under_review':
-    case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-    default: return 'bg-slate-100 text-slate-800 border-slate-200'
-  }
-}
 </script>
 
 <template>
-  <div class="space-y-6">
-    <!-- Header -->
-    <div>
-      <h1 class="text-2xl font-bold tracking-tight text-slate-900">Dashboard Overview</h1>
-      <p class="mt-1 text-sm text-slate-500">Welcome back. Here's a summary of your job applications.</p>
-    </div>
+  <div class="grid gap-8">
+    <UiPageHeader
+      :title="`Welcome back, ${authStore.user?.name ?? 'there'}`"
+      description="Track where every application stands and keep your profile ready to send."
+    >
+      <template #actions>
+        <RealtimeStatusIndicator :state="realtimeState" @refresh="refresh" />
+        <UiButton to="/candidate/jobs">
+          <template #icon><Search class="size-4" aria-hidden="true" /></template>
+          Find jobs
+        </UiButton>
+      </template>
+    </UiPageHeader>
 
-    <!-- Stats -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div v-for="stat in stats" :key="stat.name" class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-slate-500">{{ stat.name }}</p>
-            <p class="mt-2 text-3xl font-bold text-slate-900">{{ stat.value }}</p>
-          </div>
-          <div :class="[stat.bg, stat.color, 'p-3 rounded-lg flex items-center justify-center']">
-            <component :is="stat.icon" class="w-6 h-6" />
-          </div>
+    <UiAlert v-if="loadError" tone="danger" title="Dashboard could not load">
+      {{ loadError }}
+    </UiAlert>
+
+    <section aria-labelledby="stats-heading">
+      <h2 id="stats-heading" class="sr-only">Application summary</h2>
+
+      <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <UiStatCard
+          label="Total applications"
+          :value="counts.total"
+          :icon="ClipboardList"
+          tone="info"
+          :loading="applicationsStore.isFetching"
+          to="/candidate/applications"
+        />
+        <UiStatCard
+          label="Awaiting a decision"
+          :value="counts.inReview"
+          :icon="Clock"
+          tone="warning"
+          hint="On this page"
+          :loading="applicationsStore.isFetching"
+        />
+        <UiStatCard
+          label="Accepted"
+          :value="counts.accepted"
+          :icon="CheckCircle2"
+          tone="success"
+          hint="On this page"
+          :loading="applicationsStore.isFetching"
+        />
+        <UiStatCard
+          label="Not selected"
+          :value="counts.rejected"
+          :icon="XCircle"
+          tone="danger"
+          hint="On this page"
+          :loading="applicationsStore.isFetching"
+        />
+      </div>
+    </section>
+
+    <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+      <section aria-labelledby="recent-heading" class="min-w-0">
+        <UiSectionHeader
+          title="Recent applications"
+          description="Your three most recent submissions."
+        >
+          <template #actions>
+            <UiButton to="/candidate/applications" variant="ghost" size="sm">View all</UiButton>
+          </template>
+        </UiSectionHeader>
+
+        <div v-if="applicationsStore.isFetching" class="mt-4 grid gap-3" role="status" aria-busy="true">
+          <span class="sr-only">Loading your applications</span>
+          <UiSkeleton v-for="index in 3" :key="index" class="h-44" rounded="card" />
         </div>
-      </div>
-    </div>
 
-    <!-- Recent Applications -->
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-      <div class="border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-        <h2 class="text-lg font-semibold text-slate-900">Recent Applications</h2>
-        <RouterLink to="/candidate/applications" class="text-sm font-medium text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
-          View all
-          <ArrowRight class="w-4 h-4" />
-        </RouterLink>
-      </div>
-
-      <div v-if="applicationsStore.isFetching && !applications.length" class="p-6 text-center text-slate-500">
-        Loading...
-      </div>
-      <div v-else-if="!recentApplications.length" class="p-6 text-center text-slate-500">
-        You haven't applied to any jobs yet.
-      </div>
-      <div v-else class="divide-y divide-slate-100">
-        <div v-for="app in recentApplications" :key="app.id" class="p-6 hover:bg-slate-50 transition-colors flex items-center justify-between">
-          <div class="flex flex-col gap-1">
-            <h3 class="text-sm font-semibold text-slate-900">{{ app.job_listing?.title || 'Unknown Job' }}</h3>
-            <p class="text-sm text-slate-500">{{ app.job_listing?.employer?.company_name || 'Unknown Company' }} &bull; Applied {{ format(new Date(app.submitted_at), 'MMM d, yyyy') }}</p>
-          </div>
-          <div>
-            <span :class="['inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize transition-colors focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2', getStatusColor(app.status)]">
-              {{ app.status }}
-            </span>
-          </div>
+        <div v-else-if="recent.length === 0" class="mt-4">
+          <UiEmptyState
+            :icon="ClipboardList"
+            title="You have not applied to anything yet"
+            description="When you apply to a role, it will appear here with its current status."
+          >
+            <UiButton to="/candidate/jobs">Browse open roles</UiButton>
+          </UiEmptyState>
         </div>
-      </div>
+
+        <ul v-else class="mt-4 grid gap-3">
+          <li v-for="application in recent" :key="application.id">
+            <ApplicationCard :application="application" />
+          </li>
+        </ul>
+      </section>
+
+      <aside class="grid gap-4">
+        <ProfileCompletion :profile="profileStore.profile" :resume-count="resumes.length" />
+
+        <UiCard>
+          <h2 class="text-card-title text-text-primary">How decisions reach you</h2>
+          <p class="mt-2 text-support leading-6 text-text-muted">
+            Employers accept or reject applications from their own workspace. This
+            page updates as soon as a decision is recorded — there is no email to
+            wait for.
+          </p>
+        </UiCard>
+      </aside>
     </div>
   </div>
 </template>

@@ -1,0 +1,357 @@
+/*
+ * Talent Board design tokens.
+ *
+ * CSS custom properties are the source of truth for every visual constant.
+ * Tailwind consumes them through `@theme`, which emits each token as a real
+ * custom property on `:root` — so `bg-surface` and `var(--color-surface)`
+ * always resolve to the same value.
+ *
+ * Motion durations and easings are mirrored in `src/design/motion.ts` for the
+ * JavaScript animation layer. `src/design/__tests__/tokens.spec.ts` fails the
+ * build if the two ever drift apart.
+ *
+ * See docs/design-system.md for usage rules and contrast guidance.
+ */
+
+@theme static {
+  /* ---------------------------------------------------------------- *
+   * Color — primitives
+   * ---------------------------------------------------------------- */
+
+  /* Neutrals */
+  --color-ink-950: #111214;
+  --color-ink-900: #1c1e22;
+  --color-ink-800: #272a2f;
+  --color-ink-700: #3a3e45;
+  --color-muted-600: #667085;
+  --color-muted-500: #7d8490;
+
+  /* Brand — a cool, procedural blue. Reads as "utility", not "marketing". */
+  --color-brand-900: #04455f;
+  --color-brand-800: #065d80;
+  --color-brand-700: #0877a8;
+  --color-brand-600: #1096c8;
+  --color-brand-400: #67cff5;
+  --color-brand-200: #b3e6fa;
+  --color-brand-100: #ddf4fd;
+  --color-brand-50: #f0fafe;
+
+  /* Decorative pastel surfaces for job cards. Never status-bearing. */
+  --color-pastel-peach: #fadccb;
+  --color-pastel-mint: #d8f3e8;
+  --color-pastel-lilac: #e7ddfc;
+  --color-pastel-sky: #dceef8;
+  --color-pastel-rose: #f8dff0;
+  --color-pastel-neutral: #e9edf3;
+
+  /* Semantic state pairs. Foregrounds clear AA on their own backgrounds. */
+  --color-success-fg: #15803d;
+  --color-success-bg: #dcfce7;
+  --color-success-border: #a7f3c4;
+  --color-warning-fg: #a15c07;
+  --color-warning-bg: #fef3c7;
+  --color-warning-border: #fbdf8a;
+  --color-danger-fg: #b42318;
+  --color-danger-bg: #fee4e2;
+  --color-danger-border: #fbc9c5;
+  --color-info-fg: #175cd3;
+  --color-info-bg: #eaf2ff;
+  --color-info-border: #c3d9fb;
+
+  /* ---------------------------------------------------------------- *
+   * Color — semantic aliases
+   *
+   * Components reference these, never the primitives above. A future dark
+   * theme re-points this block and nothing else has to change.
+   * ---------------------------------------------------------------- */
+  --color-canvas: #f1f3f6;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f8f9fb;
+  --color-surface-sunken: #eef1f5;
+  --color-surface-inverse: var(--color-ink-950);
+  --color-surface-inverse-subtle: var(--color-ink-800);
+
+  --color-border: #d9dee7;
+  --color-border-strong: #b8c0cc;
+  --color-border-inverse: #34383f;
+
+  --color-text-primary: var(--color-ink-950);
+  --color-text-secondary: var(--color-ink-800);
+  --color-text-muted: var(--color-muted-600);
+  /* Placeholder / disabled / icon only — below AA for body copy by design. */
+  --color-text-faint: var(--color-muted-500);
+  --color-text-inverse: #ffffff;
+  --color-text-inverse-muted: #b9bfc9;
+
+  /* Accent text and small UI must use brand-700 (4.98:1 on surface).
+   * brand-600 clears 3:1 only — large text, borders, and focus rings. */
+  --color-accent: var(--color-brand-700);
+  --color-accent-hover: var(--color-brand-800);
+  --color-accent-subtle: var(--color-brand-100);
+  --color-focus-ring: var(--color-brand-600);
+
+  /* ---------------------------------------------------------------- *
+   * Typography
+   * ---------------------------------------------------------------- */
+  --font-sans:
+    'Inter Variable', 'Inter', ui-sans-serif, system-ui, -apple-system,
+    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* Fluid where it earns it; fixed where predictability matters more. */
+  --text-display: clamp(2.25rem, 1.6rem + 2.6vw, 3.5rem);
+  --text-display--line-height: 1.06;
+  --text-display--letter-spacing: -0.022em;
+  --text-display--font-weight: 700;
+
+  --text-page-title: clamp(1.75rem, 1.35rem + 1.5vw, 2.25rem);
+  --text-page-title--line-height: 1.15;
+  --text-page-title--letter-spacing: -0.018em;
+  --text-page-title--font-weight: 700;
+
+  --text-section-title: clamp(1.25rem, 1.08rem + 0.7vw, 1.75rem);
+  --text-section-title--line-height: 1.25;
+  --text-section-title--letter-spacing: -0.012em;
+  --text-section-title--font-weight: 650;
+
+  --text-card-title: clamp(1.0625rem, 1rem + 0.35vw, 1.375rem);
+  --text-card-title--line-height: 1.3;
+  --text-card-title--letter-spacing: -0.008em;
+  --text-card-title--font-weight: 650;
+
+  --text-body: 1rem;
+  --text-body--line-height: 1.6;
+  --text-support: 0.875rem;
+  --text-support--line-height: 1.55;
+  --text-meta: 0.8125rem;
+  --text-meta--line-height: 1.4;
+
+  /* ---------------------------------------------------------------- *
+   * Radius
+   * ---------------------------------------------------------------- */
+  --radius-control: 0.5rem; /* 8px  — chips, small toggles */
+  --radius-field: 0.625rem; /* 10px — inputs, buttons */
+  --radius-card: 1rem; /* 16px — cards */
+  --radius-panel: 1.25rem; /* 20px — panels, dialogs */
+  --radius-shell: 1.75rem; /* 28px — the rounded application container */
+  --radius-pill: 9999px;
+
+  /* ---------------------------------------------------------------- *
+   * Elevation
+   *
+   * Borders separate by default. Shadows are reserved for surfaces that
+   * genuinely float above the page.
+   * ---------------------------------------------------------------- */
+  --shadow-raised: 0 1px 2px 0 rgb(17 18 20 / 0.04);
+  --shadow-card-hover:
+    0 4px 6px -2px rgb(17 18 20 / 0.05), 0 12px 20px -6px rgb(17 18 20 / 0.09);
+  --shadow-popover:
+    0 4px 8px -2px rgb(17 18 20 / 0.06), 0 16px 28px -8px rgb(17 18 20 / 0.12);
+  --shadow-overlay:
+    0 8px 12px -4px rgb(17 18 20 / 0.08), 0 28px 48px -12px rgb(17 18 20 / 0.2);
+
+  /* ---------------------------------------------------------------- *
+   * Motion — mirrored by src/design/motion.ts
+   * ---------------------------------------------------------------- */
+  --ease-entrance: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ---------------------------------------------------------------- *
+   * Overlay animations
+   *
+   * Overlays (dialog, sheet, popover, menu, tooltip) animate with CSS rather
+   * than motion-v. reka-ui keeps an exiting overlay mounted until its CSS
+   * animation ends, which is what guarantees the element is actually removed.
+   * Driving them through motion-v's AnimatePresence left overlays mounted
+   * forever once closed, so presence stays with the library that owns focus
+   * and dismissal. Everything else in the app still animates with motion-v.
+   *
+   * Durations and easings below are the same tokens used everywhere else.
+   * ---------------------------------------------------------------- */
+  --animate-fade-in: fade-in var(--duration-control) var(--ease-entrance);
+  --animate-fade-out: fade-out var(--duration-instant) var(--ease-exit);
+  --animate-dialog-in: dialog-in var(--duration-panel) var(--ease-entrance);
+  --animate-dialog-out: dialog-out var(--duration-element) var(--ease-exit);
+  --animate-popover-in: popover-in var(--duration-control) var(--ease-entrance);
+  --animate-popover-out: popover-out var(--duration-instant) var(--ease-exit);
+  --animate-sheet-left-in: sheet-left-in var(--duration-panel) var(--ease-entrance);
+  --animate-sheet-left-out: sheet-left-out var(--duration-element) var(--ease-exit);
+  --animate-sheet-right-in: sheet-right-in var(--duration-panel) var(--ease-entrance);
+  --animate-sheet-right-out: sheet-right-out var(--duration-element) var(--ease-exit);
+  --animate-sheet-bottom-in: sheet-bottom-in var(--duration-panel) var(--ease-entrance);
+  --animate-sheet-bottom-out: sheet-bottom-out var(--duration-element) var(--ease-exit);
+
+  /* ---------------------------------------------------------------- *
+   * Breakpoints — defaults plus a wide-desktop stop at 1600px
+   * ---------------------------------------------------------------- */
+  --breakpoint-3xl: 100rem;
+}
+
+/* Overlay keyframes. Transform and opacity only — never layout properties. */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes dialog-in {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.97); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes dialog-out {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  to { opacity: 0; transform: translate(-50%, -50%) scale(0.98); }
+}
+@keyframes popover-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes popover-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-2px) scale(0.98); }
+}
+@keyframes sheet-left-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+@keyframes sheet-left-out {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
+@keyframes sheet-right-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes sheet-right-out {
+  from { transform: translateX(0); }
+  to { transform: translateX(100%); }
+}
+@keyframes sheet-bottom-in {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes sheet-bottom-out {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
+}
+
+/*
+ * Touch-input variant. Dense desktop controls (36px) grow to the 44px minimum
+ * touch target on coarse pointers rather than shipping two component sizes.
+ */
+@custom-variant coarse (@media (pointer: coarse));
+
+/*
+ * Tokens without a Tailwind namespace. Consumed as `var(--…)` or through
+ * arbitrary values such as `z-[var(--z-dialog)]`.
+ */
+:root {
+  /* Motion durations — mirrored by src/design/motion.ts */
+  --duration-instant: 110ms;
+  --duration-control: 165ms;
+  --duration-element: 220ms;
+  --duration-panel: 320ms;
+  --duration-stagger: 38ms;
+
+  /* Z-index scale. Nothing in the app may invent its own stacking value. */
+  --z-base: 0;
+  --z-raised: 10;
+  --z-sticky: 20;
+  --z-drawer-backdrop: 40;
+  --z-drawer: 50;
+  --z-dropdown: 60;
+  --z-dialog-backdrop: 70;
+  --z-dialog: 80;
+  --z-toast: 90;
+  --z-skip-link: 100;
+
+  /* Layout sizing */
+  --size-tap-target: 2.75rem; /* 44px minimum touch target */
+  --size-control-sm: 2.25rem;
+  --size-control-md: 2.75rem;
+  --size-control-lg: 3rem;
+  --size-shell-max: 96rem; /* 1536px application shell */
+  --size-content-max: 80rem; /* 1280px standard content column */
+  --size-prose-max: 44rem; /* readable long-form measure */
+  --size-sidebar: 17rem;
+  --size-filter-rail: 18rem;
+}
+
+@layer base {
+  html {
+    /* Opt out of global smooth scrolling: it fights keyboard navigation and
+     * has no usability justification here. */
+    scroll-behavior: auto;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Every focusable element gets the same visible ring. Components may not
+   * remove it — only reposition it. */
+  :focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-control);
+  }
+
+  /* Long job titles, company names, and pasted descriptions must never
+   * force the page to scroll sideways. */
+  h1,
+  h2,
+  h3,
+  h4,
+  p,
+  li,
+  dd,
+  dt {
+    overflow-wrap: break-word;
+  }
+
+  [hidden] {
+    display: none !important;
+  }
+}
+
+@layer utilities {
+  /* Visually hidden but announced. Becomes visible on focus for skip links. */
+  .sr-only-focusable:not(:focus):not(:focus-within) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border-width: 0;
+  }
+}
+
+/*
+ * Reduced motion is honoured globally as a safety net. Components additionally
+ * branch on `useReducedMotion()` so that JS-driven animation is skipped rather
+ * than merely shortened.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

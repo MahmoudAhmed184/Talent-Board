@@ -17,6 +17,11 @@ export interface PublicJobSummary {
   work_type?: string | null
   experience_level?: string | null
   published_at?: string | null
+  /**
+   * Application deadline. `JobListingResource` exposes the
+   * `application_deadline` column under this name.
+   */
+  expires_at?: string | null
   salary_min?: number | null
   salary_max?: number | null
   employer?: {

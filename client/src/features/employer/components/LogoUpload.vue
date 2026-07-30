@@ -1,141 +1,186 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { http } from '../../../http'
+/**
+ * Company logo upload with live preview.
+ *
+ * Rewritten onto the design system: the previous version used a native
+ * `confirm()` for removal (unstyleable, not focus-managed, and blocking) and
+ * untyped `any` error handling. Removal now goes through UiConfirmationDialog
+ * like every other destructive action in the app.
+ *
+ * The preview is optimistic and reverts if the upload fails, so the employer
+ * never believes a failed upload succeeded.
+ */
+import { computed, ref, useTemplateRef } from 'vue'
+import { ImageUp, Trash2 } from 'lucide-vue-next'
+import { UiAlert, UiButton, UiCompanyLogo, UiConfirmationDialog } from '@/components/ui'
+import { http } from '@/http'
+import { formatFileSize } from '@/features/jobs/utils/formatters'
 
-const props = defineProps<{
-  currentLogoName?: string
+const ACCEPTED = 'image/png,image/jpeg,image/jpg,image/svg+xml'
+const MAX_BYTES = 2 * 1024 * 1024
+
+const { companyName, currentLogoUrl, disabled = false } = defineProps<{
+  companyName?: string | null
+  currentLogoUrl?: string | null
   disabled?: boolean
 }>()
 
 const emit = defineEmits<{
-  (e: 'uploaded', data: any): void
-  (e: 'error', message: string): void
-  (e: 'deleted'): void
+  uploaded: [profile: unknown]
+  deleted: []
 }>()
 
-const fileInput = ref<HTMLInputElement | null>(null)
-const isUploading = ref(false)
-const isDeleting = ref(false)
+const inputRef = useTemplateRef<HTMLInputElement>('input')
 const previewUrl = ref<string | null>(null)
+const uploading = ref(false)
+const deleting = ref(false)
+const confirmOpen = ref(false)
+const errorMessage = ref('')
+
+const shownLogo = computed(() => previewUrl.value ?? currentLogoUrl ?? null)
+const hasLogo = computed(() => Boolean(shownLogo.value))
+
+function readErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error === 'object' && error !== null && 'response' in error) {
+    const response = (error as { response?: { data?: { message?: unknown } } }).response
+    const message = response?.data?.message
+
+    if (typeof message === 'string' && message.length > 0) {
+      return message
+    }
+  }
+
+  return fallback
+}
 
 function handleFileSelect(event: Event) {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (!file) return
+  const file = (event.target as HTMLInputElement).files?.[0]
 
-  // Show preview immediately
+  if (!file) {
+    return
+  }
+
+  errorMessage.value = ''
+
+  if (file.size > MAX_BYTES) {
+    errorMessage.value = `That image is ${formatFileSize(file.size)}. The limit is 2 MB.`
+    resetInput()
+    return
+  }
+
   const reader = new FileReader()
-  reader.onload = (e) => {
-    previewUrl.value = e.target?.result as string
+  reader.onload = (loaded) => {
+    previewUrl.value = loaded.target?.result as string
   }
   reader.readAsDataURL(file)
 
-  uploadFile(file)
+  void upload(file)
 }
 
-async function uploadFile(file: File) {
-  isUploading.value = true
-  
+async function upload(file: File) {
+  uploading.value = true
+
   const formData = new FormData()
   formData.append('logo_file', file)
-  formData.append('_method', 'PATCH') // Laravel requires _method for PATCH with multipart
-  
+  // Laravel does not parse multipart bodies on PATCH, so the request is POSTed
+  // with a method override — matching `PATCH /api/v1/employer/profile`.
+  formData.append('_method', 'PATCH')
+
   try {
     const response = await http.post('/api/v1/employer/profile', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+      headers: { 'Content-Type': 'multipart/form-data' },
     })
-    
+
     emit('uploaded', response.data.data)
-  } catch (error: any) {
-    const message = error.response?.data?.message || 'Failed to upload logo.'
-    emit('error', message)
-    previewUrl.value = null // Revert preview on error
-    if (fileInput.value) {
-      fileInput.value.value = ''
-    }
+  } catch (error) {
+    errorMessage.value = readErrorMessage(error, 'Your logo could not be uploaded.')
+    previewUrl.value = null
+    resetInput()
   } finally {
-    isUploading.value = false
+    uploading.value = false
   }
 }
 
-async function deleteLogo() {
-  if (!confirm('Are you sure you want to remove your company logo?')) return
-  
-  isDeleting.value = true
+async function confirmDelete() {
+  deleting.value = true
+  errorMessage.value = ''
+
   try {
     await http.delete('/api/v1/employer/company-logo')
     previewUrl.value = null
-    if (fileInput.value) {
-      fileInput.value.value = ''
-    }
+    resetInput()
+    confirmOpen.value = false
     emit('deleted')
-  } catch (error: any) {
-    emit('error', error.response?.data?.message || 'Failed to delete logo.')
+  } catch (error) {
+    errorMessage.value = readErrorMessage(error, 'Your logo could not be removed.')
   } finally {
-    isDeleting.value = false
+    deleting.value = false
   }
 }
 
-function triggerSelect() {
-  fileInput.value?.click()
+function resetInput() {
+  if (inputRef.value) {
+    inputRef.value.value = ''
+  }
 }
 </script>
 
 <template>
-  <div class="logo-upload">
-    <input
-      ref="fileInput"
-      type="file"
-      accept="image/png, image/jpeg, image/jpg, image/svg+xml"
-      class="hidden"
-      :disabled="disabled || isUploading || isDeleting"
-      @change="handleFileSelect"
-    >
-    
-    <div class="flex items-center gap-6">
-      <div 
-        class="w-24 h-24 rounded bg-gray-100 flex items-center justify-center border border-gray-300 overflow-hidden"
-      >
-        <img 
-          v-if="previewUrl" 
-          :src="previewUrl" 
-          alt="Company Logo Preview" 
-          class="w-full h-full object-contain"
-        />
-        <div v-else-if="currentLogoName" class="w-full h-full bg-indigo-50 flex items-center justify-center text-indigo-300">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-          </svg>
+  <div class="grid gap-4">
+    <div class="flex flex-wrap items-center gap-6">
+      <UiCompanyLogo :name="companyName" :src="shownLogo" size="lg" />
+
+      <div class="grid gap-3">
+        <div class="flex flex-wrap gap-2">
+          <UiButton
+            variant="secondary"
+            :disabled="disabled || deleting"
+            :loading="uploading"
+            loading-label="Uploading your logo"
+            @click="inputRef?.click()"
+          >
+            <template #icon><ImageUp class="size-4" aria-hidden="true" /></template>
+            {{ hasLogo ? 'Replace logo' : 'Upload logo' }}
+          </UiButton>
+
+          <UiButton
+            v-if="hasLogo"
+            variant="danger-ghost"
+            :disabled="disabled || uploading"
+            @click="confirmOpen = true"
+          >
+            <template #icon><Trash2 class="size-4" aria-hidden="true" /></template>
+            Remove
+          </UiButton>
         </div>
-        <div v-else class="text-gray-400 text-sm font-medium">No Logo</div>
-      </div>
-      
-      <div class="space-y-3">
-        <button
-          type="button"
-          class="btn btn-secondary text-sm px-4 py-2"
-          :disabled="disabled || isUploading || isDeleting"
-          @click="triggerSelect"
-        >
-          {{ isUploading ? 'Uploading...' : (currentLogoName || previewUrl ? 'Change Logo' : 'Upload Logo') }}
-        </button>
-        
-        <button
-          v-if="currentLogoName || previewUrl"
-          type="button"
-          class="block text-sm text-red-600 hover:text-red-700 font-medium"
-          :disabled="disabled || isUploading || isDeleting"
-          @click="deleteLogo"
-        >
-          Remove Logo
-        </button>
-        
-        <p class="text-xs text-gray-500 max-w-xs">
-          Accepted formats: PNG, JPG, JPEG, SVG. Max size: 2MB.
+
+        <p class="max-w-xs text-meta text-text-muted">
+          PNG, JPG, or SVG, up to 2 MB. Shown next to your company name on every
+          listing.
         </p>
       </div>
+
+      <input
+        ref="input"
+        type="file"
+        class="sr-only"
+        :accept="ACCEPTED"
+        :disabled="disabled || uploading || deleting"
+        @change="handleFileSelect"
+      >
     </div>
+
+    <UiAlert v-if="errorMessage" tone="danger" title="That did not work">
+      {{ errorMessage }}
+    </UiAlert>
+
+    <UiConfirmationDialog
+      v-model:open="confirmOpen"
+      title="Remove your company logo?"
+      consequence="Your listings will show your company initial instead. You can upload a new logo at any time."
+      confirm-label="Remove logo"
+      :loading="deleting"
+      @confirm="confirmDelete"
+    />
   </div>
 </template>

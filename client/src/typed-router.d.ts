@@ -37,9 +37,23 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/[...path]': RouteRecordInfo<
+      '/[...path]',
+      '/:path(.*)',
+      { path: ParamValue<true> },
+      { path: ParamValue<false> },
+      | never
+    >,
     '/admin/': RouteRecordInfo<
       '/admin/',
       '/admin',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/admin/activity': RouteRecordInfo<
+      '/admin/activity',
+      '/admin/activity',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -51,6 +65,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/admin/jobs/[id]': RouteRecordInfo<
+      '/admin/jobs/[id]',
+      '/admin/jobs/:id',
+      { id: ParamValue<true> },
+      { id: ParamValue<false> },
+      | never
+    >,
     '/auth/login': RouteRecordInfo<
       '/auth/login',
       '/auth/login',
@@ -58,9 +79,23 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
-    '/auth/register': RouteRecordInfo<
+    '/auth/register/': RouteRecordInfo<
+      '/auth/register/',
       '/auth/register',
-      '/auth/register',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/auth/register/candidate': RouteRecordInfo<
+      '/auth/register/candidate',
+      '/auth/register/candidate',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/auth/register/employer': RouteRecordInfo<
+      '/auth/register/employer',
+      '/auth/register/employer',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -72,11 +107,18 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
-    '/candidate/applications': RouteRecordInfo<
-      '/candidate/applications',
+    '/candidate/applications/': RouteRecordInfo<
+      '/candidate/applications/',
       '/candidate/applications',
       Record<never, never>,
       Record<never, never>,
+      | never
+    >,
+    '/candidate/applications/[id]': RouteRecordInfo<
+      '/candidate/applications/[id]',
+      '/candidate/applications/:id',
+      { id: ParamValue<true> },
+      { id: ParamValue<false> },
       | never
     >,
     '/candidate/jobs': RouteRecordInfo<
@@ -93,6 +135,20 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/candidate/resumes': RouteRecordInfo<
+      '/candidate/resumes',
+      '/candidate/resumes',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/dev/showcase': RouteRecordInfo<
+      '/dev/showcase',
+      '/dev/showcase',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/employer/': RouteRecordInfo<
       '/employer/',
       '/employer',
@@ -100,18 +156,39 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
-    '/employer/applications': RouteRecordInfo<
-      '/employer/applications',
+    '/employer/applications/': RouteRecordInfo<
+      '/employer/applications/',
       '/employer/applications',
       Record<never, never>,
       Record<never, never>,
       | never
     >,
-    '/employer/dashboard': RouteRecordInfo<
-      '/employer/dashboard',
-      '/employer/dashboard',
+    '/employer/applications/[id]': RouteRecordInfo<
+      '/employer/applications/[id]',
+      '/employer/applications/:id',
+      { id: ParamValue<true> },
+      { id: ParamValue<false> },
+      | never
+    >,
+    '/employer/company': RouteRecordInfo<
+      '/employer/company',
+      '/employer/company',
       Record<never, never>,
       Record<never, never>,
+      | never
+    >,
+    '/employer/jobs/': RouteRecordInfo<
+      '/employer/jobs/',
+      '/employer/jobs',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/employer/jobs/[id]/': RouteRecordInfo<
+      '/employer/jobs/[id]/',
+      '/employer/jobs/:id',
+      { id: ParamValue<true> },
+      { id: ParamValue<false> },
       | never
     >,
     '/employer/jobs/[id]/edit': RouteRecordInfo<
@@ -128,6 +205,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/forbidden': RouteRecordInfo<
+      '/forbidden',
+      '/forbidden',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/jobs/': RouteRecordInfo<
       '/jobs/',
       '/jobs',
@@ -140,6 +224,13 @@ declare module 'vue-router/auto-routes' {
       '/jobs/:id',
       { id: ParamValue<true> },
       { id: ParamValue<false> },
+      | never
+    >,
+    '/unauthorized': RouteRecordInfo<
+      '/unauthorized',
+      '/unauthorized',
+      Record<never, never>,
+      Record<never, never>,
       | never
     >,
   }
@@ -161,10 +252,18 @@ declare module 'vue-router/auto-routes' {
       views:
         | never
     }
+    'src/pages/[...path].vue': {
+      routes:
+        | '/[...path]'
+      views:
+        | never
+    }
     'src/pages/admin/_parent.vue': {
       routes:
         | '/admin/'
+        | '/admin/activity'
         | '/admin/jobs/'
+        | '/admin/jobs/[id]'
       views:
         | 'default'
     }
@@ -174,16 +273,30 @@ declare module 'vue-router/auto-routes' {
       views:
         | never
     }
+    'src/pages/admin/activity.vue': {
+      routes:
+        | '/admin/activity'
+      views:
+        | never
+    }
     'src/pages/admin/jobs/index.vue': {
       routes:
         | '/admin/jobs/'
       views:
         | never
     }
+    'src/pages/admin/jobs/[id].vue': {
+      routes:
+        | '/admin/jobs/[id]'
+      views:
+        | never
+    }
     'src/pages/auth/_parent.vue': {
       routes:
         | '/auth/login'
-        | '/auth/register'
+        | '/auth/register/'
+        | '/auth/register/candidate'
+        | '/auth/register/employer'
       views:
         | 'default'
     }
@@ -193,18 +306,32 @@ declare module 'vue-router/auto-routes' {
       views:
         | never
     }
-    'src/pages/auth/register.vue': {
+    'src/pages/auth/register/index.vue': {
       routes:
-        | '/auth/register'
+        | '/auth/register/'
+      views:
+        | never
+    }
+    'src/pages/auth/register/candidate.vue': {
+      routes:
+        | '/auth/register/candidate'
+      views:
+        | never
+    }
+    'src/pages/auth/register/employer.vue': {
+      routes:
+        | '/auth/register/employer'
       views:
         | never
     }
     'src/pages/candidate/_parent.vue': {
       routes:
         | '/candidate/'
-        | '/candidate/applications'
+        | '/candidate/applications/'
+        | '/candidate/applications/[id]'
         | '/candidate/jobs'
         | '/candidate/profile'
+        | '/candidate/resumes'
       views:
         | 'default'
     }
@@ -214,9 +341,15 @@ declare module 'vue-router/auto-routes' {
       views:
         | never
     }
-    'src/pages/candidate/applications.vue': {
+    'src/pages/candidate/applications/index.vue': {
       routes:
-        | '/candidate/applications'
+        | '/candidate/applications/'
+      views:
+        | never
+    }
+    'src/pages/candidate/applications/[id].vue': {
+      routes:
+        | '/candidate/applications/[id]'
       views:
         | never
     }
@@ -232,11 +365,26 @@ declare module 'vue-router/auto-routes' {
       views:
         | never
     }
+    'src/pages/candidate/resumes.vue': {
+      routes:
+        | '/candidate/resumes'
+      views:
+        | never
+    }
+    'src/pages/dev/showcase.vue': {
+      routes:
+        | '/dev/showcase'
+      views:
+        | never
+    }
     'src/pages/employer/_parent.vue': {
       routes:
         | '/employer/'
-        | '/employer/applications'
-        | '/employer/dashboard'
+        | '/employer/applications/'
+        | '/employer/applications/[id]'
+        | '/employer/company'
+        | '/employer/jobs/'
+        | '/employer/jobs/[id]/'
         | '/employer/jobs/[id]/edit'
         | '/employer/jobs/create'
       views:
@@ -248,15 +396,33 @@ declare module 'vue-router/auto-routes' {
       views:
         | never
     }
-    'src/pages/employer/applications.vue': {
+    'src/pages/employer/applications/index.vue': {
       routes:
-        | '/employer/applications'
+        | '/employer/applications/'
       views:
         | never
     }
-    'src/pages/employer/dashboard.vue': {
+    'src/pages/employer/applications/[id].vue': {
       routes:
-        | '/employer/dashboard'
+        | '/employer/applications/[id]'
+      views:
+        | never
+    }
+    'src/pages/employer/company.vue': {
+      routes:
+        | '/employer/company'
+      views:
+        | never
+    }
+    'src/pages/employer/jobs/index.vue': {
+      routes:
+        | '/employer/jobs/'
+      views:
+        | never
+    }
+    'src/pages/employer/jobs/[id]/index.vue': {
+      routes:
+        | '/employer/jobs/[id]/'
       views:
         | never
     }
@@ -272,6 +438,12 @@ declare module 'vue-router/auto-routes' {
       views:
         | never
     }
+    'src/pages/forbidden.vue': {
+      routes:
+        | '/forbidden'
+      views:
+        | never
+    }
     'src/pages/jobs/index.vue': {
       routes:
         | '/jobs/'
@@ -281,6 +453,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/jobs/[id].vue': {
       routes:
         | '/jobs/[id]'
+      views:
+        | never
+    }
+    'src/pages/unauthorized.vue': {
+      routes:
+        | '/unauthorized'
       views:
         | never
     }
