@@ -1,281 +1,215 @@
-# Job Board
+# Talent Board
 
-A role-based job board platform where employers publish job opportunities, admins moderate those listings, and candidates search and apply for jobs through a modern single-page application.
+A full-stack hiring marketplace where candidates discover and apply for jobs, employers manage listings and applicants, and administrators moderate opportunities. The platform combines a Laravel API with a Vue application and broadcasts application-status changes in real time.
 
-This repository currently contains the project definition and delivery documents for the MVP. The application source code has not been scaffolded yet.
+## Product Capabilities
 
-## Project Status
+### Public Discovery
 
-**Current phase:** Planning and architecture complete  
-**Implementation status:** Not started in this repository  
-**Repository model:** Monorepo recommended, with separate frontend and backend applications
+- Search and filter approved job listings
+- View job details, locations, categories, work type, experience, and salary information
+- View platform statistics
+- Register as a candidate or employer and sign in through Laravel Sanctum
 
-## Product Overview
+### Candidate Workspace
 
-The MVP covers the core workflow of a hiring marketplace:
+- Maintain candidate profile and skills
+- Upload, list, select, and delete resumes
+- Apply to jobs and prevent duplicate applications
+- Review application history and cancel eligible applications
+- Receive live application-status updates
 
-- Employers register and manage job listings.
-- Admins approve or reject submitted job listings before publication.
-- Candidates register, maintain a profile, search approved jobs, and apply with a resume or forwarded contact details.
-- Employers review submitted applications and accept or reject candidates.
-- The system persists application status changes and delivers real-time updates through WebSockets.
+### Employer Workspace
 
-## User Roles
+- Maintain company profile and logo
+- Create, update, list, and remove owned job listings
+- Review applicants for owned jobs
+- Accept or reject applications with ownership and transition checks
+- Trigger queued notifications and real-time candidate updates
 
-| Role | Responsibilities |
+### Administration
+
+- Review all and pending job listings
+- Approve or reject submitted listings
+- Inspect platform activity data
+- Enforce role-specific moderation routes and throttling
+
+## Engineering Highlights
+
+- Domain services and repository abstractions keep controllers thin
+- Laravel policies enforce ownership for jobs, resumes, profiles, and applications
+- Sanctum session authentication with CSRF protection
+- Laravel Reverb/Echo application-status broadcasts
+- Queue jobs for notifications, uploads, and cache warming
+- S3-compatible resume and company-logo storage
+- Paginated job discovery with category, location, salary, work-type, and date filters
+- Vue feature components, Pinia stores, typed file-based routes, and shared design-system components
+- Pest feature coverage for identity, discovery, candidate, employer, admin, uploads, and broadcasting
+- Vitest coverage for UI, composables, design tokens, and status helpers
+
+## Tech Stack
+
+| Layer | Technologies |
 | --- | --- |
-| Guest | Browse approved jobs, view job details, access login and registration pages |
-| Candidate | Register, manage profile, upload resume, search jobs, apply, cancel eligible applications, track statuses |
-| Employer | Register, create and edit listings, manage branding, review applications, accept or reject candidates |
-| Admin | Review pending jobs, approve or reject listings, monitor overall platform activity |
+| Backend | PHP 8.3+, Laravel 13, Eloquent |
+| Authentication | Laravel Sanctum, policies, role middleware |
+| Realtime and async | Laravel Reverb, Echo, Pusher protocol, queues |
+| Storage and cache | S3-compatible filesystem, Laravel cache, Redis-ready config |
+| Frontend | Vue 3, TypeScript, Pinia, Vue Router, Axios |
+| UI | Tailwind CSS 4, Reka UI, Lucide, Motion for Vue |
+| Testing | Pest, PHPUnit, Vitest, Vue Test Utils, jsdom |
 
-## MVP Scope
-
-### Authentication
-- Candidate and employer registration
-- Candidate, employer, and admin login
-- Logout and authenticated session restoration
-- Role-based route and API authorization with Laravel Sanctum and policies
-
-### Job Listings
-- Employer-owned job listing CRUD
-- Moderation state management: `pending`, `approved`, `rejected`
-- Admin approval required before public visibility
-- Public listing and detail pages for approved, non-expired jobs only
-
-### Search and Filtering
-- Keyword search across title and description
-- Location filtering
-- Category filtering
-- Experience-level filtering
-- Salary-range filtering
-- Date-posted filtering
-- Work-type filtering: `remote`, `on-site`, `hybrid`
-- Paginated result sets
-
-### Candidate Profile and Applications
-- Candidate profile management
-- Contact details and skills management
-- Resume upload and default resume assignment
-- Job application submission with resume or contact forwarding
-- Candidate application history and cancellation of eligible applications
-
-### Employer Operations
-- Employer dashboard for owned listings
-- Application review for owned job listings
-- Candidate accept and reject actions
-- Company branding support with optional logo upload
-
-### Admin Moderation
-- Pending jobs queue
-- Approve and reject actions
-- Platform activity summaries for jobs, users, and applications
-
-### Real-Time and Background Processing
-- Database-persisted application status tracking
-- Reverb-based real-time application status updates
-- Queue-driven processing for file-related and notification-related side effects
-
-## Future Work
-
-These items are intentionally out of MVP scope:
-
-- Employer analytics dashboard
-- Comment system on job listings with moderation
-- LinkedIn application form integration
-- Email and in-app candidate notifications
-- Resume database with employer-side search
-- Payment integration after candidate approval
-
-## Architecture Overview
-
-The planned system architecture is:
-
-- **Frontend:** Vue `3.5.33` SPA
-- **Backend:** Laravel `13.7.0` REST API
-- **Authentication:** Laravel Sanctum
-- **File storage:** S3-compatible object storage
-- **Real-time updates:** Laravel Reverb
-- **Async processing:** Laravel queue workers
-- **Transport model:** JSON APIs over HTTP plus WebSocket subscriptions for status updates
-
-### Request Flow
-
-1. The Vue SPA sends requests to the Laravel API under `/api/v1`.
-2. Sanctum protects authenticated API routes.
-3. Controllers delegate business rules to Services.
-4. Services delegate data persistence to Repositories.
-5. File uploads are stored in S3-compatible storage.
-6. Queue workers process background tasks.
-7. Reverb broadcasts application-status changes to authorized clients.
-
-## Technology Stack
-
-| Layer | Technology | Version / Rule |
-| --- | --- | --- |
-| Backend language | PHP | `8.5.5` |
-| Backend framework | Laravel | `13.7.0` |
-| Frontend framework | Vue | `3.5.33` stable only |
-| State management | Pinia | `3`, setup-store syntax only |
-| Routing | Vue Router | `5.0.6` via `vue-router/vite` |
-| Build tool | Vite | `8` |
-| Frontend language | TypeScript | Required |
-| Auth | Laravel Sanctum | Required |
-| Real-time | Laravel Reverb | Required |
-| File storage | S3-compatible storage | Required |
-
-## Repository Strategy
-
-This project should be implemented as **one monorepo** with separate backend and frontend applications.
-
-### Current Repository Layout
+## Repository Structure
 
 ```text
 .
-├── README.md
-└── docs/
-    ├── project_description.md
-    ├── requirements.md
-    ├── SRS.md
-    ├── plan.md
-    └── tasks.md
-```
-
-### Recommended Target Layout
-
-```text
-.
-├── README.md
-├── docs/
-├── server/
-│   └── ... Laravel API
 ├── client/
-│   └── ... Vue SPA
-├── docker-compose.yml
-├── .env.example
-└── scripts/
+│   └── src/
+│       ├── components/       # Shared app and design-system components
+│       ├── composables/      # API workflows and reusable state
+│       ├── features/         # Auth, jobs, candidate, employer, applications
+│       ├── pages/            # File-based Vue routes
+│       ├── realtime/         # Laravel Echo/Reverb client
+│       └── stores/           # Pinia stores
+├── server/
+│   ├── app/
+│   │   ├── Http/Controllers/ # Versioned API controllers
+│   │   ├── Models/           # Jobs, applications, profiles, resumes, users
+│   │   ├── Policies/         # Ownership and permission rules
+│   │   ├── Repositories/     # Persistence interfaces/implementations
+│   │   ├── Services/         # Business workflows and discovery
+│   │   ├── Events/           # Application status events
+│   │   └── Jobs/             # Upload, notification, and cache work
+│   ├── routes/api/           # Public, candidate, employer, and admin routes
+│   └── tests/                # Pest feature and unit tests
+└── docs/                     # Requirements, SRS, plan, and task ownership
 ```
 
-### Why a Monorepo
+## Getting Started
 
-- One product, one source of truth
-- Easier API and frontend contract coordination
-- Simpler task ownership for a four-developer team
-- Shared documentation, CI, and release process
-- Safer cross-stack changes in a single pull request
+### Prerequisites
 
-## Documentation Map
+- PHP 8.3+
+- Composer
+- Node.js 20+ and npm
+- A database supported by Laravel
+- Optional: Redis, an S3-compatible bucket, and Reverb for the complete async/realtime flow
 
-| Document | Purpose |
+### Backend Setup
+
+```bash
+git clone https://github.com/MahmoudAhmed184/Talent-Board.git
+cd Talent-Board/server
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate --seed
+php artisan serve
+```
+
+The API runs at `http://127.0.0.1:8000` by default.
+
+Configure the checked-in `.env.example` for:
+
+- Database connection
+- `FRONTEND_URL`, CORS, session, and Sanctum stateful domains
+- Queue and cache drivers
+- Reverb application/server details
+- Mail delivery
+- AWS/S3-compatible storage
+
+For the complete local workflow, run the queue worker and Reverb server in separate terminals:
+
+```bash
+php artisan queue:work
+php artisan reverb:start
+```
+
+### Frontend Setup
+
+```bash
+cd Talent-Board/client
+npm install
+cp .env.example .env
+npm run dev
+```
+
+Important client variables:
+
+| Variable | Purpose |
 | --- | --- |
-| [docs/project_description.md](./docs/project_description.md) | Original product-owner feature description |
-| [docs/requirements.md](./docs/requirements.md) | Functional and non-functional requirements baseline |
-| [docs/SRS.md](./docs/SRS.md) | Formal software requirements specification |
-| [docs/plan.md](./docs/plan.md) | Four-sprint MVP execution plan |
-| [docs/tasks.md](./docs/tasks.md) | Detailed developer task distribution |
+| `VITE_API_BASE_URL` | Laravel origin, or `auto` to use the browser host |
+| `VITE_API_PORT` | Backend port used when the URL is automatic |
+| `VITE_REVERB_APP_KEY` | Reverb application key |
+| `VITE_REVERB_HOST` | WebSocket host, or `auto` |
+| `VITE_REVERB_PORT` | WebSocket port |
+| `VITE_REVERB_SCHEME` | `http` or `https` |
 
-## Delivery Plan
+## API Overview
 
-The MVP is planned as a four-week delivery across four sprints:
+The API prefix is `/api/v1`.
 
-| Sprint | Theme | Primary Outcome |
-| --- | --- | --- |
-| 1 | Slice Foundations | Auth and platform shell, core jobs and application models, first shared UI and layout groundwork |
-| 2 | Contracts & Feature Surfaces | Auth completion, public discovery, employer CRUD, and candidate-profile contract completion |
-| 3 | Candidate Lifecycle & Decision Flows | Apply flow, uploads, employer review, shared UI, and admin groundwork |
-| 4 | Governance, Real-time & Regression | Moderation, Reverb, branding uploads, QA, and regression coverage |
-
-## Team Ownership
-
-| Developer | Ownership |
+| Audience | Base routes |
 | --- | --- |
-| D1 | Identity and platform shell: auth API, route and bootstrap plumbing, shared Vue shell, protected layouts, and shared UI foundations |
-| D2 | Jobs discovery and governance: taxonomy and listing core, public search and discovery, cache behavior, admin moderation, and platform activity |
-| D3 | Employer operations and live status: employer job endpoints, employer dashboard UX, employer review and decisions, and Reverb broadcast or client integration |
-| D4 | Candidate lifecycle and file pipeline: candidate profile, resumes, applications, upload processing, notification persistence, and branding-upload contracts |
+| Public | `/jobs`, `/stats`, `/categories`, `/locations`, `/auth/*` |
+| Candidate | `/candidate/profile`, `/candidate/resumes`, `/candidate/applications` |
+| Employer | `/employer/profile`, `/employer/jobs`, `/employer/applications` |
+| Administrator | `/admin/jobs`, `/admin/jobs/pending`, `/admin/activity` |
 
-Detailed assignment is documented in [docs/tasks.md](./docs/tasks.md).
+Representative operations:
 
-## Engineering Standards
+```text
+POST   /api/v1/auth/register
+POST   /api/v1/auth/login
+GET    /api/v1/jobs
+POST   /api/v1/jobs/{job}/applications
+POST   /api/v1/candidate/resumes
+DELETE /api/v1/candidate/applications/{application}
+POST   /api/v1/employer/jobs
+PATCH  /api/v1/employer/applications/{application}/status
+PATCH  /api/v1/admin/jobs/{job}/approve
+PATCH  /api/v1/admin/jobs/{job}/reject
+```
 
-The implementation must follow these project rules:
+Route files under `server/routes/api/` are the source of truth.
 
-- Laravel controllers stay thin.
-- FormRequests perform validation only.
-- Business rules live in Services.
-- Persistence access lives in Repositories.
-- All API routes use the `/api/v1` prefix.
-- All Eloquent models use PHP Attribute style such as `#[Table]`, `#[Fillable]`, and `#[Hidden]`.
-- Paginated collections use JSON:API-style envelopes.
-- Single resources use Laravel `JsonResource`.
-- Pinia stores use setup-store syntax only.
-- Vue Router integration uses `import VueRouter from 'vue-router/vite'`.
-- Vue DOM refs use `useTemplateRef()`, not `ref(null)`.
-- Vue props are destructured directly from `defineProps<>()`.
-- `useRoute()` is assumed to be auto-typed with no route-path argument.
-- Any model cloning guidance uses `clone($model, ['key' => $value])`.
+## Verification
 
-## Planned API Domains
+Backend:
 
-The backend will be organized around these API domains:
+```bash
+cd server
+php artisan test
+```
 
-- `auth` — D1
-- `jobs` — D2 public read/search core, D3 employer write surface
-- `candidate/profile` — D4
-- `candidate/resumes` — D4
-- `candidate/applications` — D4
-- `employer/profile` — D4
-- `employer/jobs` — D3
-- `employer/applications` — D3
-- `admin/jobs` — D2
-- `admin/activity` — D2
-- `broadcasting` — D3
+Frontend:
 
-## Non-Functional Targets
+```bash
+cd client
+npm run test
+npm run typecheck
+npm run build
+```
 
-- **Security:** Sanctum authentication, Laravel policies and gates, CSRF protection, validated file uploads
-- **Performance:** Paginated collection endpoints and indexed search filters
-- **Scalability:** Queue-backed side effects and S3-compatible file storage
-- **Accessibility:** WCAG 2.1 AA compliance for core workflows
-- **Browser support:** Latest two stable versions of Chrome, Firefox, Safari, and Edge
-- **Reliability:** Durable status tracking and consistent ownership enforcement
+## Architecture
 
-## Implementation Bootstrap Checklist
+State-changing backend requests follow this general flow:
 
-When development starts, the recommended order is:
+```text
+Route -> controller -> authorization/validation -> service -> repository -> model
+                                              \-> event/job/broadcast
+```
 
-1. Create the `server/` Laravel application.
-2. Create the `client/` Vue application.
-3. Add root-level environment examples and developer setup instructions.
-4. Configure local database, queue, storage, and Reverb services.
-5. Start Sprint 1 slice foundations in parallel: D1 auth and shell, D2 jobs core, D3 employer groundwork, and D4 candidate or application groundwork.
-6. Freeze API contracts by domain as defined in [docs/tasks.md](./docs/tasks.md).
-7. Add CI once both applications can build and test independently.
+Public discovery uses a dedicated service and cache layer. Application decisions are persisted before queued notifications and real-time broadcasts are dispatched. The Vue client centralizes HTTP behavior, maps workflows into composables and Pinia stores, and authorizes private Reverb channels through Laravel.
 
-## Suggested Root-Level Conventions
+## Documentation
 
-These conventions are recommended once implementation begins:
+- [Project description](docs/project_description.md)
+- [Requirements](docs/requirements.md)
+- [Software Requirements Specification](docs/SRS.md)
+- [Delivery plan](docs/plan.md)
+- [Task distribution](docs/tasks.md)
 
-- Keep backend code inside `server/`.
-- Keep frontend code inside `client/`.
-- Keep shared documentation in `docs/`.
-- Use one pull request for changes that alter both API contracts and frontend consumers.
-- Keep environment-specific secrets out of version control.
-- Treat the planning documents as the active source of scope control during MVP delivery.
+## License
 
-## Notes for Contributors
-
-- Do not treat future-work items as part of the MVP backlog.
-- Do not move business logic into controllers or FormRequests.
-- Do not introduce Vue `3.6` or beta-only features.
-- Do not switch from the agreed monorepo structure without an explicit architecture decision.
-
-## Next Step
-
-The next practical step is to scaffold the monorepo implementation structure:
-
-- `server/` for Laravel API
-- `client/` for Vue SPA
-- root environment and orchestration files
-
-After that, the vertical-slice sprint work can begin directly from the contracts defined in `docs/`.
+The Laravel application skeleton declares MIT in its package metadata. No root-level license file is currently included for the complete repository.
